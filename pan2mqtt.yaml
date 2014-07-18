@@ -1,0 +1,143 @@
+﻿general:
+    version: 1.0
+    log_level:  10
+                        #CRITICAL   50
+                        #ERROR      40
+                        #WARNING    30
+                        #INFO       20
+                        #DEBUG      10
+                        #NOTSET     0
+    pidfile: /tmp/pan2mqtt.pid
+    stdout: /dev/stdout
+
+###pan:
+###    port: /dev/tty.usbserial-A6XIHIOG
+###    baudrate: 9600
+###    driver_class: XBeeWrapper
+###    nodes:
+###        0013a200407916c5:
+###            /seeed/test/dio1:
+###                dir: uplink             # uplink|downlink
+###                ### match_key: the xbee library converts io-sample packets (frame_id = 92) into 
+###                ### the key-value pair format, like "dio: 1". For packets with frame_id = 90, 
+###                ### you should use the key-value pair format while sending contents from a node.
+###                match_key: adc1
+###                filter:                 # Only one filter is supported now
+###                    type: LinearFilter  # *Filter class in filters.py
+###                    parameters:
+###                        slope: 1.1
+###                        offset: 0
+###                        
+###            /seeed/test/dio2:
+###                dir: uplink
+###                match_key: dio2
+###                filter:
+###                    type: EnumFilter
+###                    parameters:
+###                        1: 'Closed'
+###                        0: 'Open'
+###                        
+###            /seeed/{client_id}/data:
+###                dir: uplink
+###                match_key: key
+###                        
+###            /seeed/test/down1:
+###                dir: downlink
+###                type: dio               # dio|data|rpc(MeshBee)
+###                dio_num: 11             # needed by type "io"
+###                filter:
+###                    type: EnumFilter
+###                    parameters:
+###                        #from: to
+###                        'on': 1
+###                        'off': 0        
+###
+###            /seeed/test/down2:
+###                dir: downlink
+###                type: data              # dio|data|rpc(MeshBee)
+###                filter:
+###                    type: EnumFilter
+###                    parameters:
+###                        #from: to
+###                        'on': 'turn on the light'
+###                        'off': 'oh,please shut off the light'
+                        
+                        
+pan:
+    port: /dev/tty.usbserial-A6XS8YXP
+    baudrate: 115200
+    driver_class: MeshBeeWrapper
+    nodes:
+        00158d00003552b7:
+            /seeed/test/analog:
+                dir: uplink             # uplink|downlink
+                ### match_key: the xbee library converts io-sample packets (frame_id = 92) into 
+                ### the key-value pair format, like "dio: 1". For packets with frame_id = 90, 
+                ### you should use the key-value pair format while sending contents from a node.
+                match_key: A3
+                filter:                 # Only one filter is supported now
+                    type: LinearFilter  # *Filter class in filters.py
+                    parameters:
+                        slope: 1.1
+                        offset: 0
+                        
+            /seeed/test/dio12:
+                dir: uplink
+                match_key: D12
+                filter:
+                    type: EnumFilter
+                    parameters:
+                        1: 'Closed'
+                        0: 'Open'
+                        
+            /seeed/{client_id}/data:
+                dir: uplink
+                match_key: key
+                        
+            /seeed/test/down1:
+                dir: downlink
+                type: dio               # dio|data|rpc(MeshBee)
+                dio_num: 12             # needed by type "io"
+
+            /seeed/test/down2:
+                dir: downlink
+                type: data              # dio|data|rpc(MeshBee)
+                filter:
+                    type: EnumFilter
+                    parameters:
+                        #from: to
+                        'on': 'turn on the light'
+                        'off': 'oh,please shut off the light'                        
+
+
+mqtt:
+    client_id: id_pan2mqtt
+    host: test.mosquitto.org
+    port: 1883
+#    username: ociljcvc
+#    password: Q5B6TLU-NGBZ
+    keepalive: 60
+    clean_session: False
+    qos: 0
+    retain: True
+    status_topic: /seeed/{client_id}/status
+    set_will: True
+            
+plugin:
+    Timer:
+        interval: 10
+    
+###    Xively:
+###        api_key: NHyIHhQHTVyRM9aseXdzncJmkYse9aJUIkNfYKavn7Qh16jT
+###        feed_id: 353324743
+###        interval: 10    #sec, xively upload limit: <=25calls/min
+###        upload_topics: 
+###             /seeed/test/dio1
+             
+    QueryMeshBee:
+        interval: 2
+        dio: 
+            00158d00003552b7: [D12]    #as listed in mesh_bee.py
+        adc: 
+            00158d00003552b7: [A3]
+        
