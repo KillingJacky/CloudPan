@@ -114,7 +114,7 @@ class MeshBeeWrapper(object):
         """
         None
 
-    def send_message (self, type, address, msg, port = 0):
+    def send_message (self, type, address, msg, port = b'\x0c'):
         """
         Sends a message to a remote radio
         """
@@ -123,6 +123,9 @@ class MeshBeeWrapper(object):
         try:
             addr_len = len(address)
             address = binascii.unhexlify(address)
+
+            if len(port) > 1:
+                port = globals()[port]
 
             if type == 'dio':
                 #number = struct.pack('< B',port)

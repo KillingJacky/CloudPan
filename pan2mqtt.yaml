@@ -94,10 +94,10 @@ pan:
                 dir: uplink
                 match_key: key
                         
-            /seeed/test/down1:
+            /seeed/test/led_on_sleep:
                 dir: downlink
                 type: dio               # dio|data|rpc(MeshBee)
-                dio_num: 12             # needed by type "io"
+                dio_num: D9             # needed by type "io"
 
             /seeed/test/down2:
                 dir: downlink
@@ -127,17 +127,17 @@ plugin:
     Timer:
         interval: 10
     
-###    Xively:
-###        api_key: NHyIHhQHTVyRM9aseXdzncJmkYse9aJUIkNfYKavn7Qh16jT
-###        feed_id: 353324743
-###        interval: 10    #sec, xively upload limit: <=25calls/min
-###        upload_topics: 
-###             /seeed/test/dio1
+    Xively:
+        api_key: NHyIHhQHTVyRM9aseXdzncJmkYse9aJUIkNfYKavn7Qh16jT
+        feed_id: 353324743
+        interval: 10    #sec, xively upload limit: <=25calls/min
+        upload_topics: 
+             /seeed/test/analog
              
     QueryMeshBee:
         interval: 2
-        dio: 
-            00158d00003552b7: [D12]    #as listed in mesh_bee.py
+#        dio: 
+#            00158d00003552b7: [D12]    #as listed in mesh_bee.py
         adc: 
             00158d00003552b7: [A3]
         

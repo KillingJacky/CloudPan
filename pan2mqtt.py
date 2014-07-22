@@ -150,8 +150,8 @@ class PAN2MQTT(Daemon):
         if rc == 0:
             self.__log(logging.INFO, "Connected to MQTT broker: %s" % self.host)
             self.mqtt_client.publish(self.status_topic.format(client_id=self.client_id), "1")
-            self.__sub_downlink_topics()
             self.mqtt_connected = True
+            self.__sub_downlink_topics()
         else:
             self.__log(logging.ERROR, "Could not connect to MQTT broker: %s" % self.host)
             self.__log(logging.ERROR, "Error code: %d" % rc)
@@ -220,7 +220,7 @@ class PAN2MQTT(Daemon):
 
             #handle the topic types
             if topic['type'] == 'dio':
-                self.pan.send_message('dio', mac, value, dio_num = int(topic['dio_num']))
+                self.pan.send_message('dio', mac, value, port = topic['dio_num'])
                 #self.__log(logging.DEBUG, "sent dio message")
             elif topic['type'] == 'data':
                 self.pan.send_message('data', mac, value)
