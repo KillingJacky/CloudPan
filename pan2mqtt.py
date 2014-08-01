@@ -3,6 +3,7 @@
 #   Pan to MQTT gateway
 #   Copyright (C) 2014 by seeedstudio
 #   Author: Jack Shao (jacky.shaoxg@gmail.com)
+#   Oliver Wang Modify 2014/08 
 #
 #   The MIT License (MIT)
 #
@@ -42,6 +43,7 @@ from filters import *
 from plugins import *
 from paho.mqtt import client
 from daemon import Daemon
+import sqlite3 as database 
 
 
 class PAN2MQTT(Daemon):
@@ -123,8 +125,7 @@ class PAN2MQTT(Daemon):
                         self.downlink_topics[topic] = (mac, topic_content)
                     else:
                         self.__log(logging.ERROR, "Unknown 'dir'")
-
-
+        
 
     def __sub_downlink_topics (self):
         if not self.mqtt_connected:
@@ -133,7 +134,8 @@ class PAN2MQTT(Daemon):
             rc, mid = self.mqtt_client.subscribe(t, self.mqtt_qos)
             self.mqtt_subcriptions[mid] = t
             self.__log(logging.INFO, "Sent subscription request to topic %s" % t)
-
+        
+        
     def __filter (self, input, filter_config):
         try:
             filter = Factory(filter_config['type'])
@@ -145,6 +147,23 @@ class PAN2MQTT(Daemon):
             pass
         return input
 
+    #response topic list to client which requires this
+    def __resp_topic_list(self, dst_topic):
+        '''
+        Broadcast gateway information when the gateway thread is starting 
+        '''             
+        str_topic_holder = ''     
+        if self.config['pan']['nodes']:
+            for mac,mac_obj in self.config['pan']['nodes'].items():
+                for topic,topic_content in mac_obj.items():
+                    topic = topic.format(client_id=self.client_id)
+                    if topic_content['dir'] == "uplink" and topic_content['type'] != "listening":
+                        str_topic_holder = str_topic_holder + topic + "@"
+                        
+        print "topic list:" + str_topic_holder
+        self.mqtt_client.publish(dst_topic, str_topic_holder, 2)               
+        
+        
     ###
     def on_mqtt_connect (self, client, userdata, flags, rc):
         if rc == 0:
@@ -175,8 +194,15 @@ class PAN2MQTT(Daemon):
         self.__log(logging.INFO, "Received message from PAN: %s, %s:%s" % (mac, key, value))
 
         #walk over plugins and determin whether to drop
+        '''
+        there are two callback in each plugin
+        1.on_message_from_pan abstract function in base
+        description: do something when receives pan event 
+        2.pre_publish
+        description: do something before publish to broker        
+        '''
         for name,p in self.plugins_ins.items():
-            if not p.on_message_from_pan(mac, key, value):
+            if not p.on_message_from_pan(mac, key, value):            
                 return False
 
         #search the topic
@@ -224,8 +250,11 @@ class PAN2MQTT(Daemon):
                 #self.__log(logging.DEBUG, "sent dio message")
             elif topic['type'] == 'data':
                 self.pan.send_message('data', mac, value)
-            elif topic['type'] == 'rpc':
+            elif topic['type'] == 'rpc':            
                 pass
+            elif topic['type'] == 'listening':
+                #to specified client
+                self.__resp_topic_list(str(value))
             else:
                 self.__log(logging.ERROR, "Unknown downlink handler type: %s" % topic['type'])
                 return
@@ -235,13 +264,15 @@ class PAN2MQTT(Daemon):
 
     def do_reload (self):
         self.__log(logging.DEBUG, "Reload not implemented now")
-
+          
+                  
     def run (self):
+        
         self.__log(logging.INFO, "Starting Pan2Mqtt %s" % self.config['general']['version'])
-
+                         
         #parse nodes, up/down-link channels
         self.__parse_nodes()
-
+                     
         #connect mqtt
         self.mqtt_client.connect(self.host, self.config['mqtt']['port'], self.config['mqtt']['keepalive'])
         sec=0
@@ -279,6 +310,7 @@ class PAN2MQTT(Daemon):
             else:
                 self.__log(logging.ERROR, "Can not make the instance of %s from factory"%p)
 
+        
         #blocking loop
         try:
             self.mqtt_client.loop_forever()
