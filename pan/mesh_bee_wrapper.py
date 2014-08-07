@@ -81,9 +81,9 @@ class MeshBeeWrapper(object):
 
         if packet['frame_type'] == 'API_REMOTE_AT_RESP':
             if packet['cmd_id_str'] == 'ATIO':
-                self.on_message(address, packet['resp_body']['dio'], packet['resp_body']['state'])
+                self.on_message(address, packet['resp_body']['dio'], packet['resp_body']['state'], 'dio')
             elif packet['cmd_id_str'] == 'ATAD':
-                self.on_message(address, packet['resp_body']['src'], packet['resp_body']['value'])
+                self.on_message(address, packet['resp_body']['src'], packet['resp_body']['value'], 'adc')
 
         # Data sent through the serial connection of the remote radio
         if packet['frame_type'] == 'API_DATA_PACKET':
@@ -105,10 +105,11 @@ class MeshBeeWrapper(object):
                     except:
                         value = line
                         port = self.default_port_name
-                    self.on_message(address, port, value)
+                    self.on_message(address, port, value, 'data')
 
 
-    def on_message(self, address, port, value):
+    #oliver add type: dio/adc/data
+    def on_message(self, address, port, value, type):
         """
         Hook for outgoing messages.
         """

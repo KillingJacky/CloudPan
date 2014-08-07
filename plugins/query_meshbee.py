@@ -67,4 +67,3 @@ class QueryMeshBee(PluginBase):
 
 
 Factory.register(QueryMeshBee)
-

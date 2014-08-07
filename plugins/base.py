@@ -32,6 +32,7 @@ class PluginBase(object):
     config = None
     global_config = None
 
+    
     def start (self):
         """
         Hook
@@ -50,7 +51,7 @@ class PluginBase(object):
         """
         pass
 
-    def on_message_from_pan (self, address, key, value):
+    def on_message_from_pan (self, address, key, value, type):
         """
         Hook
         Return False to drop the original message
