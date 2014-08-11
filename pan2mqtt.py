@@ -1,30 +1,5 @@
 #!/usr/bin/python
-
-#   Pan to MQTT gateway
-#   Copyright (C) 2014 by seeedstudio
-#   Author: Jack Shao (jacky.shaoxg@gmail.com)
-#   Oliver Wang Modify 2014/08 
-#
-#   The MIT License (MIT)
-#
-#   Permission is hereby granted, free of charge, to any person obtaining a copy
-#   of this software and associated documentation files (the "Software"), to deal
-#   in the Software without restriction, including without limitation the rights
-#   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#   copies of the Software, and to permit persons to whom the Software is
-#   furnished to do so, subject to the following conditions:
-#
-#   The above copyright notice and this permission notice shall be included in
-#   all copies or substantial portions of the Software.
-#
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#   THE SOFTWARE.
-
+# -*- coding:utf-8 -*-
 #dependence: paho-mqtt (pip install paho-mqtt)
 #            XBee (pip install XBee)
 #            PyYAML (pip install PyYaml)
@@ -190,7 +165,7 @@ class PAN2MQTT(Daemon):
     def on_mqtt_log (self, client, userdata, level, buf):
         self.__log(logging.DEBUG, buf)
 
-    def on_message_from_pan (self, mac, key, value):
+    def on_message_from_pan (self, mac, key, value, type):
         self.__log(logging.INFO, "Received message from PAN: %s, %s:%s" % (mac, key, value))
 
         #walk over plugins and determin whether to drop
@@ -202,7 +177,7 @@ class PAN2MQTT(Daemon):
         description: do something before publish to broker        
         '''
         for name,p in self.plugins_ins.items():
-            if not p.on_message_from_pan(mac, key, value):            
+            if not p.on_message_from_pan(mac, key, value, type):            
                 return False
 
         #search the topic

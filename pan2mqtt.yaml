@@ -10,15 +10,65 @@
     pidfile: /tmp/pan2mqtt.pid
     stdout: /dev/stdout
 
- 
+###pan:
+###    port: /dev/tty.usbserial-A6XIHIOG
+###    baudrate: 9600
+###    driver_class: XBeeWrapper
+###    nodes:
+###        0013a200407916c5:
+###            /seeed/test/dio1:
+###                dir: uplink             # uplink|downlink
+###                ### match_key: the xbee library converts io-sample packets (frame_id = 92) into 
+###                ### the key-value pair format, like "dio: 1". For packets with frame_id = 90, 
+###                ### you should use the key-value pair format while sending contents from a node.
+###                match_key: adc1
+###                filter:                 # Only one filter is supported now
+###                    type: LinearFilter  # *Filter class in filters.py
+###                    parameters:
+###                        slope: 1.1
+###                        offset: 0
+###                        
+###            /seeed/test/dio2:
+###                dir: uplink
+###                match_key: dio2
+###                filter:
+###                    type: EnumFilter
+###                    parameters:
+###                        1: 'Closed'
+###                        0: 'Open'
+###                        
+###            /seeed/{client_id}/data:
+###                dir: uplink
+###                match_key: key
+###                        
+###            /seeed/test/down1:
+###                dir: downlink
+###                type: dio               # dio|data|rpc(MeshBee)
+###                dio_num: 11             # needed by type "io"
+###                filter:
+###                    type: EnumFilter
+###                    parameters:
+###                        #from: to
+###                        'on': 1
+###                        'off': 0        
+###
+###            /seeed/test/down2:
+###                dir: downlink
+###                type: data              # dio|data|rpc(MeshBee)
+###                filter:
+###                    type: EnumFilter
+###                    parameters:
+###                        #from: to
+###                        'on': 'turn on the light'
+###                        'off': 'oh,please shut off the light'
                         
                         
 pan:
-    port: /dev/ttyUSB2
+    port: /dev/ttyUSB1
     baudrate: 115200
     driver_class: MeshBeeWrapper
     nodes:
-        00158d000035529c:
+        00158d0000355534:
             /zigbee/analog/a3:
                 dir: uplink             # uplink|downlink
                 type: adc
@@ -42,15 +92,11 @@ pan:
                         1: 'Closed'
                         0: 'Open'
                         
-            /zigbee/data/{client_id}:
+            /zigbee/data/{client_id}/light:
                 dir: uplink
                 type: data
-                match_key: key
-                        
-            /zigbee/dio/dio9:
-                dir: downlink
-                type: dio               # dio|data|rpc(MeshBee)
-                dio_num: D9             # needed by type "io"
+                match_key: light
+                
 
             /zigbee/data/down2:
                 dir: downlink
@@ -65,6 +111,20 @@ pan:
             /const_topic/listening:      
                 dir: downlink
                 type: listening
+        
+        #gas node
+        00158d00003552b7:
+            /zigbee/data/{client_id}/gas:
+                dir: uplink
+                type: data
+                match_key: gas
+        
+        #buzzer node
+        00158d00003554b9:
+            /zigbee/dio/dio9:
+                dir: downlink
+                type: dio               # dio|data|rpc(MeshBee)
+                dio_num: D9             # needed by type "io"
                                    
 
 
@@ -83,8 +143,11 @@ mqtt:
             
 plugin:
     Timer:
-        interval: 5
-        offline_threshold: 20  #if a node doesn't send heartbeat after 20s
+        p_interval: 1
+        offline_threshold: 60  #if a node doesn't send heartbeat after 20s
+        light_threshold: 350 
+        gas_threshold: 300
+        notify_node: 00158d00003554b9  
     #Xively:
     #    api_key: NHyIHhQHTVyRM9aseXdzncJmkYse9aJUIkNfYKavn7Qh16jT
     #    feed_id: 353324743
@@ -92,14 +155,15 @@ plugin:
     #    upload_topics: 
     #         /seeed/test/analog
              
-    QueryMeshBee:
+#    QueryMeshBee:
         interval: 10
 #        dio: 
 #            00158d00003552b7: [D12]    #as listed in mesh_bee.py
-        adc: 
-            00158d000035529c: [A3]
+#        adc: 
+#            00158d0000355534: [A3]
     
- 
+    #BroadcastParam:
+        #interval: 1
         
         
 # this is a constant topic, which is used to store the configuration file

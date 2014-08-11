@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#   Pan to MQTT gateway
+#   Heartbeat Collection and Analyser
 #   Copyright (C) 2014 by seeedstudio
 #   Author: Oliver wang 
 #
@@ -77,62 +77,90 @@ class Timer(PluginBase):
 
     def start (self):
         print '===========Timer Task=========='
-        self.timer = threading.Timer(self.config['interval'], self.interval_task)
+        self.timer = threading.Timer(self.config['p_interval'], self.interval_task)
         self.timer.start()
 
-    def interval_task (self):         
-        #self.send_to_pan ('data', '0013a200407916c5', 'date=2014-07-01')
-        #self.send_to_pan ('data', '000000000000ffff', 'date=2014-07-01')
-        #self.send_to_pan ('data', '00158d00003552b7', 'date=2014-07-01\r\n')
+    def interval_task (self):                 
         '''
         database
         '''
         try:            
+            #print 'Heartbeat Analyser'  
             conn = database.connect('gateway.db')
             cur = conn.cursor()
             cur.execute('SELECT * FROM heartbeat WHERE heartbeat.mac is not null')
             all_items = cur.fetchall()
             for row in all_items:
-                #judge if node is off-line
-                offline_threshold = self.config['offline_threshold']
-                heartbeat_time = datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S")  
+                _mac = row[0]
+                _type = row[1]
+                _matchKey = row[2]
+                _payload = row[3]
+                heartbeat_time = datetime.strptime(row[4], "%Y-%m-%d %H:%M:%S")
+                #judge if this node[src] is off-line
+                offline_threshold = self.config['offline_threshold']                  
                 now = datetime.now()            
                 if (now - heartbeat_time).seconds > offline_threshold:
-                    print "--------------node:%s is offline------------" % row[0]
+                    print "--------------node:%s is offline------------" % _mac 
                     topic = self.global_config['const_topic']['topic_offline_alert'] + '/' + self.global_config['mqtt']['client_id']
-                    self.send_to_mqtt(topic, str(row[0])) 
+                    self.send_to_mqtt(topic, str(_mac))                 
+                    #delete the offline heartbeat item                 
+                    cur.execute('DELETE FROM heartbeat WHERE heartbeat.mac = ? AND heartbeat.matchKey = ?', (_mac, _matchKey))
+                    conn.commit()
+                else:
+                    #process online node[src] item                                                    
+                    value_f = float(_payload)
+                    value_i = int(value_f)
+                    if 'light' == _matchKey:       #this is a light sensor                  
+                        light_threshold = self.config['light_threshold']                       
+                        if value_i > light_threshold:
+                            self.send_to_pan('dio', self.config['notify_node'], 0, 'D0')
+                            #print '************************************Bright, turn off light*****************************'
+                        else:
+                            self.send_to_pan('dio', self.config['notify_node'], 1, 'D0')
+                            #print '***********************************Dim, turn on light**********************************'
+                    elif 'gas' == _matchKey:
+                        gas_threshold = self.config['gas_threshold']
+                        if value_i > gas_threshold:
+                            self.send_to_pan('dio', self.config['notify_node'], 1, 'D0')
+                            #print '*************************Alert: gas concentrations exceeding**************************'
+                        else:
+                            self.send_to_pan('dio', self.config['notify_node'], 0, 'D0')
             if conn:
                 conn.close()
         except Exception, e:
             print "class:Timer, function:interval_task, error:%s" % e
-        #restart timer
-        self.timer = threading.Timer(self.config['interval'], self.interval_task)
+            
+        #restart timer         
+        self.timer = threading.Timer(self.config['p_interval'], self.interval_task)
         self.timer.start()
 
-    def on_message_from_pan (self, address, key, value):
-        
-        print "======================heartbeat collection==========================="
+    def on_message_from_pan (self, address, key, value, type):                
         '''
         table [mac, data_type, data_value, heartbeat_time]
         if item exsits already, update, otherwise, insert 
         '''
         try:
+            #Heartbeat only contain data frame, filter dio/adc here
+            if 'data' != type:
+                return True                
+            print "======================new device heartbeat==========================="
             #connect        
-            print "connecting to database ..."
+            #print "connecting to database ..."
             conn = database.connect('gateway.db')
             cur = conn.cursor()            
             #fetch
             heartbeat_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cur.execute("select * from heartbeat where heartbeat.mac = ? and heartbeat.type = ?", (address, key)) 
+            #mac and matchKey is the single ID for a heartbeat item
+            cur.execute("select * from heartbeat where heartbeat.mac = ? and heartbeat.matchKey = ?", (address, key)) 
             heartbeat_item = cur.fetchone() 
             if heartbeat_item is not None:
                 #update                             
-                cur.execute("UPDATE heartbeat SET payload = ?, heartbeatTime = ? WHERE mac = ? AND type = ?", (value, heartbeat_time, address, key))
+                cur.execute("UPDATE heartbeat SET payload = ?, heartbeatTime = ? WHERE mac = ? AND matchKey = ?", (value, heartbeat_time, address, key))
                 conn.commit()
                 print "update"
             else:
                 #insert
-                cur.execute("INSERT INTO heartbeat VALUES(?,?,?,?)", (address, key, value, heartbeat_time))
+                cur.execute("INSERT INTO heartbeat VALUES(?,?,?,?,?)", (address, type, key, value, heartbeat_time))
                 conn.commit()
                 print "insert"   
             #each time we finish,close connection
